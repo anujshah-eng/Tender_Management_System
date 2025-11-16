@@ -1,0 +1,54 @@
+[build-system]
+# Recommend using Hatchling as the build backend, a common choice
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+# 1. *** FILL IN YOUR PROJECT METADATA ***
+name = "tender_dodcument"
+version = "0.1.0"
+description = "A FastAPI project using LangChain and PostgreSQL/pgvector."
+requires-python = ">=3.11" # Adjusted for modern Python standards
+license = "MIT"
+authors = [
+    {name = "Your Name", email = "you@example.com"}
+]
+keywords = ["fastapi", "langchain", "genai"]
+
+# 2. Main Runtime Dependencies (The packages your application needs to run)
+dependencies = [
+    "fastapi[all]==0.109.0",
+    "uvicorn[standard]==0.27.0",
+    "pydantic==2.7.4",
+    "pydantic-settings==2.1.0",
+    "pydantic>=2.7",
+    "langgraph>=0.2.16",
+    "langchain-core>=0.3.12", 
+    "langsmith>=0.1.83",
+    "google-generativeai",
+    "sqlalchemy",
+    "psycopg2-binary",
+    "pgvector",
+    "alembic",
+    "PyPDF2>=3.0.1",
+    "requests>=2.32.3",
+    "rank-bm25>=0.2.2",
+    "numpy>=1.26.4",
+    "python-dotenv>=1.0.1",
+    "typing-extensions>=4.12.2",
+    "httpx",
+]
+
+# 3. Development Dependencies (Packages needed for testing, notebooks, etc.)
+[project.optional-dependencies]
+dev = [
+    "ipython",
+    "ipykernel",
+    "pytest",
+    "pytest-asyncio",
+]
+
+# New section to tell Hatchling what to package
+[tool.hatch.build.targets.wheel]
+# Tell Hatchling to look for the 'tender_management_system' directory
+packages = ["tender_management_system"]
