@@ -2,6 +2,7 @@
 """
 Query Router with SSE Streaming Support
 """
+import logging
 from fastapi import APIRouter, HTTPException, Path
 from fastapi.responses import StreamingResponse
 from dto.request_dto import QueryRequest
@@ -12,6 +13,8 @@ from services.embedding_service import EmbeddingService
 from repositories.tender_chunk_repository import TenderChunkRepository
 from repositories.tender_file_repository import TenderFileRepository
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/document", tags=["Query"])
 
 # Initialize dependencies
@@ -20,6 +23,8 @@ file_repo = TenderFileRepository()
 embedding_service = EmbeddingService()
 retrieval_service = RetrievalService(chunk_repo, embedding_service)
 streaming_service = StreamingService(retrieval_service)
+
+logger.info("Query router initialized")
 
 
 @router.post(
@@ -33,31 +38,21 @@ async def query_document(
 ):
     """
     Stream Q&A response using Server-Sent Events (SSE).
-    
-    **Event Types:**
-    - `status`: Progress updates
-    - `token`: Individual response tokens (streaming text)
-    - `complete`: Final complete response with metadata
-    - `error`: Error messages
-    
-    **Client Example (JavaScript):**
-    ```javascript
-    const eventSource = new EventSource('/document/1/query');
-    
-    eventSource.addEventListener('token', (e) => {
-        console.log('Token:', e.data);
-    });
-    
-    eventSource.addEventListener('complete', (e) => {
-        const result = JSON.parse(e.data);
-        console.log('Complete:', result);
-        eventSource.close();
-    });
-    ```
     """
+    logger.info("="*70)
+    logger.info("QUERY REQUEST RECEIVED")
+    logger.info("="*70)
+    logger.info(f"Tender File ID: {tender_file_id}")
+    logger.info(f"Question: {request.question}")
+    logger.info(f"Explanation Level: {request.explanation_level}")
+    logger.info(f"Top K: {request.top_k_chunks}")
+    
     # Check if document exists
     if not file_repo.exists(tender_file_id):
+        logger.error(f"Document not found: tender_file_id={tender_file_id}")
         raise HTTPException(status_code=404, detail="Document not found")
+    
+    logger.info("Document found, starting streaming response")
     
     # Return SSE stream
     return StreamingResponse(
@@ -73,5 +68,3 @@ async def query_document(
             "X-Accel-Buffering": "no"
         }
     )
-
-

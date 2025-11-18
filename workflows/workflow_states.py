@@ -2,7 +2,7 @@
 """
 Workflow State Definitions for LangGraph
 """
-from typing import TypedDict, List, Dict, Any, Literal
+from typing import TypedDict, List, Dict, Any, Literal, Optional
 
 
 class TenderIngestionState(TypedDict):
@@ -14,6 +14,10 @@ class TenderIngestionState(TypedDict):
     tender_file_id: int
     raw_text: str
     structured_data: Dict[str, Any]
+    
+    # Enhanced Tender Details
+    extracted_tender_details: Dict[str, Any]
+    
     chunks: List[Dict[str, Any]]
     dense_embeddings: List[List[float]]
     sparse_embeddings: List[Dict[str, int]]

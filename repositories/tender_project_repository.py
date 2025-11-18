@@ -2,16 +2,17 @@
 """
 TenderProject Repository with SQLAlchemy
 """
-
+import logging
 from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from repositories.base_repository import BaseRepository
-from database.models import TenderProject # Changed to relative import
-from core.interfaces import ITenderProjectRepository # Changed to relative import
-from core.domain_models import TenderProject as DomainTenderProject # Changed to relative import
+from database.models import TenderProject
+from core.interfaces import ITenderProjectRepository
+from core.domain_models import TenderProject as DomainTenderProject
 from database.connection import get_db_session
 
+logger = logging.getLogger(__name__)
 
 
 class TenderProjectRepository(BaseRepository[TenderProject], ITenderProjectRepository):
@@ -19,9 +20,13 @@ class TenderProjectRepository(BaseRepository[TenderProject], ITenderProjectRepos
     
     def __init__(self):
         super().__init__(TenderProject)
+        logger.debug("TenderProjectRepository initialized")
     
     def create(self, project: DomainTenderProject) -> int:
         """Create a new tender project"""
+        logger.info(f"Creating tender project: {project.tender_number}")
+        logger.debug(f"Project ID: {project.project_id}, Status: {project.tender_status}")
+        
         with get_db_session() as db:
             # Check if project exists
             existing = db.query(TenderProject).filter(
@@ -29,16 +34,17 @@ class TenderProjectRepository(BaseRepository[TenderProject], ITenderProjectRepos
             ).first()
             
             if existing:
-                # Update existing
+                logger.info(f"Project already exists with tender_id={existing.tender_id}, updating...")
                 existing.tender_number = project.tender_number
                 existing.tender_date = project.tender_date
                 existing.submission_deadline = project.submission_deadline
                 existing.tender_status = project.tender_status
                 existing.tender_value = project.tender_value
                 db.flush()
+                logger.info(f"Updated existing project: tender_id={existing.tender_id}")
                 return existing.tender_id
             else:
-                # Create new
+                logger.debug("Creating new project record...")
                 new_project = TenderProject(
                     project_id=project.project_id,
                     tender_number=project.tender_number,
@@ -51,17 +57,23 @@ class TenderProjectRepository(BaseRepository[TenderProject], ITenderProjectRepos
                 db.add(new_project)
                 db.flush()
                 db.refresh(new_project)
+                logger.info(f"Created new project with tender_id={new_project.tender_id}")
                 return new_project.tender_id
     
     def get_by_id(self, tender_id: int) -> Optional[DomainTenderProject]:
         """Get project by ID"""
+        logger.debug(f"Fetching tender project: tender_id={tender_id}")
+        
         with get_db_session() as db:
             project = db.query(TenderProject).filter(
                 TenderProject.tender_id == tender_id
             ).first()
             
             if not project:
+                logger.warning(f"Tender project not found: tender_id={tender_id}")
                 return None
+            
+            logger.debug(f"Found tender project: {project.tender_number}")
             
             return DomainTenderProject(
                 tender_id=project.tender_id,
@@ -79,6 +91,9 @@ class TenderProjectRepository(BaseRepository[TenderProject], ITenderProjectRepos
     
     def update(self, project: DomainTenderProject) -> bool:
         """Update existing project"""
+        logger.info(f"Updating tender project: tender_id={project.tender_id}")
+        logger.debug(f"Status: {project.tender_status}, Value: {project.tender_value}")
+        
         with get_db_session() as db:
             db_project = db.query(TenderProject).filter(
                 TenderProject.tender_id == project.tender_id
@@ -89,5 +104,8 @@ class TenderProjectRepository(BaseRepository[TenderProject], ITenderProjectRepos
                 db_project.tender_value = project.tender_value
                 db_project.updated_by = project.updated_by
                 db.flush()
+                logger.info("Project updated successfully")
                 return True
+            
+            logger.warning(f"Project not found for update: tender_id={project.tender_id}")
             return False

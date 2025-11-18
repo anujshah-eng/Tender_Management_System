@@ -38,8 +38,8 @@ print(f"✓ Loaded .env from: {env_file}")
 # Now import and run setup
 try:
     from sqlalchemy import create_engine, text
-    from tender_management_system.config.settings import settings
-    from tender_management_system.database.models import Base
+    from config.settings import settings
+    from database.models import Base
     
     print("\n🔧 Creating database connection...")
     
@@ -123,7 +123,6 @@ try:
     print("\n" + "="*70)
     print("✅ DATABASE SETUP COMPLETE!")
     print("="*70)
-    print("\nNext: python run_app.py")
     
 except Exception as e:
     print(f"\n❌ Error: {e}")

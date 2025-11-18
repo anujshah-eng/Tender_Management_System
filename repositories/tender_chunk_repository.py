@@ -2,25 +2,33 @@
 """
 TenderChunk Repository with SQLAlchemy
 """
+import logging
 from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from repositories.base_repository import BaseRepository # Changed to relative import
-from database.models import TenderChunk # Changed to relative import
-from core.interfaces import ITenderChunkRepository # Changed to relative import
-from core.domain_models import TenderChunk as DomainTenderChunk, ChunkSearchResult # Changed to relative import
-from database.connection import get_db_session 
+from repositories.base_repository import BaseRepository
+from database.models import TenderChunk
+from core.interfaces import ITenderChunkRepository
+from core.domain_models import TenderChunk as DomainTenderChunk, ChunkSearchResult
+from database.connection import get_db_session
+
+logger = logging.getLogger(__name__)
+
 
 class TenderChunkRepository(BaseRepository[TenderChunk], ITenderChunkRepository):
     """Repository for TenderChunk operations"""
     
     def __init__(self):
         super().__init__(TenderChunk)
+        logger.debug("TenderChunkRepository initialized")
     
     def bulk_create(self, chunks: List[DomainTenderChunk]) -> bool:
         """Create multiple chunks efficiently"""
         if not chunks:
+            logger.warning("No chunks to create")
             return True
+        
+        logger.info(f"Bulk creating {len(chunks)} chunks")
         
         with get_db_session() as db:
             db_chunks = []
@@ -38,14 +46,19 @@ class TenderChunkRepository(BaseRepository[TenderChunk], ITenderChunkRepository)
             
             db.bulk_save_objects(db_chunks)
             db.flush()
+            logger.info(f"Successfully created {len(db_chunks)} chunks")
             return True
     
     def get_all_by_file_id(self, tender_file_id: int) -> List[DomainTenderChunk]:
         """Get all chunks for a file"""
+        logger.debug(f"Fetching all chunks for tender_file_id={tender_file_id}")
+        
         with get_db_session() as db:
             chunks = db.query(TenderChunk).filter(
                 TenderChunk.tender_file_id == tender_file_id
             ).order_by(TenderChunk.chunk_index).all()
+            
+            logger.debug(f"Found {len(chunks)} chunks")
             
             return [
                 DomainTenderChunk(
@@ -69,11 +82,17 @@ class TenderChunkRepository(BaseRepository[TenderChunk], ITenderChunkRepository)
         alpha: float
     ) -> List[ChunkSearchResult]:
         """Perform hybrid search (dense + BM25)"""
+        logger.info(f"Performing hybrid search: tender_file_id={tender_file_id}, top_k={top_k}, alpha={alpha}")
+        logger.debug(f"Query embedding dimensions: {len(query_embedding)}")
+        logger.debug(f"Query tokens: {len(query_tokens)} tokens")
+        
         with get_db_session() as db:
             query_text = ' '.join(query_tokens)
             beta = 1 - alpha
             
             embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
+            
+            logger.debug("Executing hybrid search SQL query...")
             
             # Hybrid search query
             sql = text("""
@@ -116,6 +135,8 @@ class TenderChunkRepository(BaseRepository[TenderChunk], ITenderChunkRepository)
                 'top_k': top_k
             }).fetchall()
             
+            logger.info(f"Hybrid search returned {len(results)} results")
+            
             search_results = []
             for rank, row in enumerate(results, 1):
                 chunk = DomainTenderChunk(
@@ -125,10 +146,12 @@ class TenderChunkRepository(BaseRepository[TenderChunk], ITenderChunkRepository)
                     chunk_index=row[3],
                     tender_file_id=tender_file_id
                 )
-                search_results.append(ChunkSearchResult(
+                result = ChunkSearchResult(
                     chunk=chunk,
                     relevance_score=float(row[4]),
                     rank=rank
-                ))
+                )
+                search_results.append(result)
+                logger.debug(f"  Rank {rank}: Score={result.relevance_score:.4f}, Chunk={chunk.chunk_index}")
             
             return search_results
